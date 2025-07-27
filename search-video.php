@@ -1,49 +1,46 @@
 <?php
 /**
  * YouTube Video Search
- * Searches for videos by keyword and returns top 5 results
+ * 
+ * This tool searches for YouTube videos using the YouTube Data API v3.
  */
 
 require_once 'config.php';
-header('Content-Type: text/html; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo '<div class="result-container result-error">
-            <h5><i class="fas fa-exclamation-triangle me-2"></i>Invalid Request</h5>
-            <p>This endpoint only accepts POST requests.</p>
+// Check if keyword is provided
+if (!isset($_POST['keyword']) || empty($_POST['keyword'])) {
+    echo '<div class="result-card">
+            <div class="result-header">
+                <i class="fas fa-exclamation-triangle result-icon"></i>
+                <h3 class="result-title">Keyword Required</h3>
+            </div>
+            <div class="result-content">
+                <p>Please provide a search keyword.</p>
+            </div>
           </div>';
     exit;
 }
 
-$keyword = isset($_POST['keyword']) ? trim($_POST['keyword']) : '';
+$keyword = trim($_POST['keyword']);
 
-if (empty($keyword)) {
-    echo '<div class="result-container result-error">
-            <h5><i class="fas fa-exclamation-triangle me-2"></i>Keyword Required</h5>
-            <p>Please enter a search keyword.</p>
-          </div>';
-    exit;
-}
-
-if (strlen($keyword) > MAX_INPUT_LENGTH) {
-    echo '<div class="result-container result-error">
-            <h5><i class="fas fa-exclamation-triangle me-2"></i>Keyword Too Long</h5>
-            <p>Search keyword exceeds maximum allowed length.</p>
-          </div>';
-    exit;
-}
-
-if (YOUTUBE_API_KEY === 'your_youtube_api_key_here') {
-    echo '<div class="result-container result-error">
-            <h5><i class="fas fa-exclamation-triangle me-2"></i>Configuration Error</h5>
-            <p>YouTube API key not configured. Please update config.php with your API key.</p>
+// Validate keyword length
+if (strlen($keyword) < 2) {
+    echo '<div class="result-card">
+            <div class="result-header">
+                <i class="fas fa-exclamation-triangle result-icon"></i>
+                <h3 class="result-title">Invalid Keyword</h3>
+            </div>
+            <div class="result-content">
+                <p>Please enter at least 2 characters for search.</p>
+            </div>
           </div>';
     exit;
 }
 
 try {
+    // Search for videos using YouTube API
     $api_key = YOUTUBE_API_KEY;
-    $url = "https://www.googleapis.com/youtube/v3/search?part=snippet&q=" . urlencode($keyword) . "&type=video&maxResults=5&key=" . $api_key;
+    $url = "https://www.googleapis.com/youtube/v3/search?part=snippet&q=" . urlencode($keyword) . "&type=video&maxResults=10&key=" . $api_key;
     
     $context = stream_context_create([
         'http' => [
@@ -64,92 +61,91 @@ try {
         throw new Exception('Invalid JSON response from API');
     }
     
+    // Check for API errors
     if (isset($data['error'])) {
         $error_message = isset($data['error']['message']) ? $data['error']['message'] : 'Unknown API error';
         throw new Exception('YouTube API Error: ' . $error_message);
     }
     
-    if ($data && isset($data['items']) && !empty($data['items'])) {
-        $total_results = isset($data['pageInfo']['totalResults']) ? $data['pageInfo']['totalResults'] : 0;
-        
-        echo '<div class="result-container result-success">
-                <h5><i class="fas fa-check-circle me-2"></i>Search Results</h5>
-                <p><strong>Keyword:</strong> ' . htmlspecialchars($keyword) . '</p>
-                <p><strong>Total Results:</strong> ' . number_format($total_results) . ' videos found</p>
-                <p><strong>Showing:</strong> Top 5 results</p>
-                
-                <div class="mt-3">';
-        
-        foreach ($data['items'] as $index => $video) {
-            $snippet = $video['snippet'];
-            $video_id = $video['id']['videoId'];
-            $title = htmlspecialchars($snippet['title']);
-            $channel_title = htmlspecialchars($snippet['channelTitle']);
-            $description = htmlspecialchars(substr($snippet['description'], 0, 100)) . (strlen($snippet['description']) > 100 ? '...' : '');
-            $published_at = date('M j, Y', strtotime($snippet['publishedAt']));
-            $thumbnail_url = $snippet['thumbnails']['medium']['url'];
-            
-            echo '<div class="video-result">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <img src="' . $thumbnail_url . '" alt="Video Thumbnail" class="video-thumbnail">
-                        </div>
-                        <div class="col-md-9">
-                            <h6 class="video-title">
-                                <a href="https://youtube.com/watch?v=' . $video_id . '" target="_blank">' . $title . '</a>
-                            </h6>
-                            <p class="video-channel">
-                                <i class="fas fa-user me-1"></i>' . $channel_title . '
-                                <span class="ms-3">
-                                    <i class="fas fa-calendar me-1"></i>' . $published_at . '
-                                </span>
-                            </p>
-                            <p class="text-muted small">' . $description . '</p>
-                            <div class="mt-2">
-                                <button class="btn btn-outline-primary btn-sm" onclick="copyVideoId(\'' . $video_id . '\')">
-                                    <i class="fas fa-copy me-1"></i>Copy Video ID
-                                </button>
-                                <button class="btn btn-outline-secondary btn-sm ms-2" onclick="copyVideoUrl(\'' . $video_id . '\')">
-                                    <i class="fas fa-link me-1"></i>Copy URL
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                  </div>';
-        }
-        
-        echo '</div>
+    if (empty($data['items'])) {
+        echo '<div class="result-card">
+                <div class="result-header">
+                    <i class="fas fa-search result-icon"></i>
+                    <h3 class="result-title">No Results Found</h3>
+                </div>
+                <div class="result-content">
+                    <p>No videos found for: <strong>' . htmlspecialchars($keyword) . '</strong></p>
+                    <p>Try different keywords or check your spelling.</p>
+                </div>
               </div>';
-        
-        echo '<script>
-                function copyVideoId(videoId) {
-                    navigator.clipboard.writeText(videoId).then(() => {
-                        alert("Video ID copied to clipboard!");
-                    });
-                }
+        exit;
+    }
+    
+    $total_results = $data['pageInfo']['totalResults'] ?? 0;
+    $results_per_page = $data['pageInfo']['resultsPerPage'] ?? 0;
+    
+    echo '<div class="result-card">
+            <div class="result-header">
+                <i class="fas fa-search result-icon"></i>
+                <h3 class="result-title">Search Results</h3>
+            </div>
+            <div class="result-content">
+                <div class="result-item">
+                    <div class="result-label">Search Term</div>
+                    <div class="result-value">' . htmlspecialchars($keyword) . '</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Results Found</div>
+                    <div class="result-value">' . number_format($total_results) . ' videos</div>
+                </div>
                 
-                function copyVideoUrl(videoId) {
-                    const url = "https://youtube.com/watch?v=" + videoId;
-                    navigator.clipboard.writeText(url).then(() => {
-                        alert("Video URL copied to clipboard!");
-                    });
-                }
-              </script>';
+                <div class="search-results">';
+    
+    foreach ($data['items'] as $item) {
+        $video_id = $item['id']['videoId'];
+        $snippet = $item['snippet'];
+        $title = htmlspecialchars($snippet['title']);
+        $channel_title = htmlspecialchars($snippet['channelTitle']);
+        $published_date = date('M j, Y', strtotime($snippet['publishedAt']));
+        $description = htmlspecialchars(substr($snippet['description'], 0, 150));
+        $thumbnail_url = $snippet['thumbnails']['medium']['url'] ?? $snippet['thumbnails']['default']['url'];
         
-    } else {
-        echo '<div class="result-container result-info">
-                <h5><i class="fas fa-info-circle me-2"></i>No Results Found</h5>
-                <p>No videos found for the keyword: <strong>' . htmlspecialchars($keyword) . '</strong></p>
-                <small class="text-muted">Try using different keywords or check your spelling.</small>
+        echo '<div class="search-item">
+                <div class="search-item-header">
+                    <img src="' . $thumbnail_url . '" alt="Video thumbnail" class="search-thumbnail">
+                    <div class="search-item-content">
+                        <div class="search-item-title">
+                            <a href="https://www.youtube.com/watch?v=' . $video_id . '" target="_blank">' . $title . '</a>
+                        </div>
+                        <div class="search-item-channel">' . $channel_title . '</div>
+                        <div class="search-item-meta">
+                            Published: ' . $published_date . ' • 
+                            Video ID: ' . $video_id . '
+                            <button class="copy-btn" data-clipboard-text="' . $video_id . '" style="margin-left: 8px;">
+                                <i class="fas fa-copy"></i> Copy ID
+                            </button>
+                        </div>
+                        <div class="search-item-meta">' . $description . (strlen($snippet['description']) > 150 ? '...' : '') . '</div>
+                    </div>
+                </div>
               </div>';
     }
+    
+    echo '</div>
+            </div>
+          </div>';
     
 } catch (Exception $e) {
     $error_message = DEBUG_MODE ? $e->getMessage() : 'An error occurred while processing your request.';
     
-    echo '<div class="result-container result-error">
-            <h5><i class="fas fa-exclamation-triangle me-2"></i>API Error</h5>
-            <p>' . htmlspecialchars($error_message) . '</p>
+    echo '<div class="result-card">
+            <div class="result-header">
+                <i class="fas fa-exclamation-triangle result-icon"></i>
+                <h3 class="result-title">Error</h3>
+            </div>
+            <div class="result-content">
+                <p>' . htmlspecialchars($error_message) . '</p>
+            </div>
           </div>';
 }
 ?> 

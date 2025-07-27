@@ -1,47 +1,44 @@
 <?php
 /**
  * YouTube Tag Extractor
- * Extracts all tags from a YouTube video
+ * 
+ * This tool extracts tags from YouTube videos using the YouTube Data API v3.
  */
 
 require_once 'config.php';
-header('Content-Type: text/html; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo '<div class="result-container result-error">
-            <h5><i class="fas fa-exclamation-triangle me-2"></i>Invalid Request</h5>
-            <p>This endpoint only accepts POST requests.</p>
+// Check if video_id is provided
+if (!isset($_POST['video_id']) || empty($_POST['video_id'])) {
+    echo '<div class="result-card">
+            <div class="result-header">
+                <i class="fas fa-exclamation-triangle result-icon"></i>
+                <h3 class="result-title">Video ID Required</h3>
+            </div>
+            <div class="result-content">
+                <p>Please provide a valid YouTube video ID.</p>
+            </div>
           </div>';
     exit;
 }
 
-$video_id = isset($_POST['video_id']) ? trim($_POST['video_id']) : '';
+$video_id = trim($_POST['video_id']);
 
-if (empty($video_id)) {
-    echo '<div class="result-container result-error">
-            <h5><i class="fas fa-exclamation-triangle me-2"></i>Video ID Required</h5>
-            <p>Please enter a YouTube video ID.</p>
-          </div>';
-    exit;
-}
-
+// Validate video ID format
 if (!preg_match('/^[a-zA-Z0-9_-]{11}$/', $video_id)) {
-    echo '<div class="result-container result-error">
-            <h5><i class="fas fa-exclamation-triangle me-2"></i>Invalid Video ID</h5>
-            <p>Video ID must be exactly 11 characters long.</p>
-          </div>';
-    exit;
-}
-
-if (YOUTUBE_API_KEY === 'your_youtube_api_key_here') {
-    echo '<div class="result-container result-error">
-            <h5><i class="fas fa-exclamation-triangle me-2"></i>Configuration Error</h5>
-            <p>YouTube API key not configured. Please update config.php with your API key.</p>
+    echo '<div class="result-card">
+            <div class="result-header">
+                <i class="fas fa-exclamation-triangle result-icon"></i>
+                <h3 class="result-title">Invalid Video ID</h3>
+            </div>
+            <div class="result-content">
+                <p>The video ID must be exactly 11 characters long and contain only letters, numbers, hyphens, and underscores.</p>
+            </div>
           </div>';
     exit;
 }
 
 try {
+    // Get video data from YouTube API
     $api_key = YOUTUBE_API_KEY;
     $url = "https://www.googleapis.com/youtube/v3/videos?part=snippet&id=" . urlencode($video_id) . "&key=" . $api_key;
     
@@ -64,83 +61,96 @@ try {
         throw new Exception('Invalid JSON response from API');
     }
     
+    // Check for API errors
     if (isset($data['error'])) {
         $error_message = isset($data['error']['message']) ? $data['error']['message'] : 'Unknown API error';
         throw new Exception('YouTube API Error: ' . $error_message);
     }
     
-    if ($data && isset($data['items']) && !empty($data['items'])) {
-        $video = $data['items'][0];
-        $snippet = $video['snippet'];
-        $title = htmlspecialchars($snippet['title']);
-        $channel_title = htmlspecialchars($snippet['channelTitle']);
-        $tags = isset($snippet['tags']) ? $snippet['tags'] : [];
-        
-        echo '<div class="result-container result-success">
-                <h5><i class="fas fa-check-circle me-2"></i>Tags Extracted</h5>
-                <p><strong>Video:</strong> ' . $title . '</p>
-                <p><strong>Channel:</strong> ' . $channel_title . '</p>';
-        
-        if (!empty($tags)) {
-            $tag_count = count($tags);
-            echo '<p><strong>Total Tags:</strong> ' . $tag_count . '</p>
-                  <div class="mt-3">
-                    <h6><i class="fas fa-tags me-2"></i>Video Tags</h6>
-                    <div class="tags-container">';
-            
-            foreach ($tags as $tag) {
-                $escaped_tag = htmlspecialchars($tag);
-                echo '<span class="tag-item">' . $escaped_tag . '</span>';
-            }
-            
-            echo '</div>
-                  <div class="mt-3">
-                    <button class="btn btn-outline-primary btn-sm" onclick="copyAllTags()">
-                        <i class="fas fa-copy me-2"></i>Copy All Tags
-                    </button>
-                  </div>';
-        } else {
-            echo '<div class="mt-3">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        This video has no tags or tags are not publicly available.
+    if (empty($data['items'])) {
+        echo '<div class="result-card">
+                <div class="result-header">
+                    <i class="fas fa-exclamation-triangle result-icon"></i>
+                    <h3 class="result-title">Video Not Found</h3>
+                </div>
+                <div class="result-content">
+                    <p>Could not find video with ID: <strong>' . htmlspecialchars($video_id) . '</strong></p>
+                    <p>Make sure the video ID is correct and the video is publicly available.</p>
+                </div>
+              </div>';
+        exit;
+    }
+    
+    $video = $data['items'][0];
+    $snippet = $video['snippet'];
+    $tags = $snippet['tags'] ?? [];
+    
+    echo '<div class="result-card">
+            <div class="result-header">
+                <i class="fas fa-tags result-icon"></i>
+                <h3 class="result-title">Tag Extractor</h3>
+            </div>
+            <div class="result-content">
+                <div class="result-item">
+                    <div class="result-label">Video Title</div>
+                    <div class="result-value">' . htmlspecialchars($snippet['title']) . '</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Channel</div>
+                    <div class="result-value">' . htmlspecialchars($snippet['channelTitle']) . '</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Video ID</div>
+                    <div class="result-value">
+                        <span>' . $video_id . '</span>
+                        <button class="copy-btn" data-clipboard-text="' . $video_id . '">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
                     </div>
-                  </div>';
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Tags Found</div>
+                    <div class="result-value">' . count($tags) . ' tags</div>
+                </div>';
+    
+    if (!empty($tags)) {
+        echo '<div class="tag-cloud">';
+        
+        foreach ($tags as $tag) {
+            echo '<div class="tag-item">' . htmlspecialchars($tag) . '</div>';
         }
         
-        echo '<div class="mt-3">
-                <small class="text-muted">
-                    <i class="fas fa-link me-1"></i>
-                    Video URL: <a href="https://youtube.com/watch?v=' . htmlspecialchars($video_id) . '" target="_blank">https://youtube.com/watch?v=' . htmlspecialchars($video_id) . '</a>
-                </small>
-              </div>
-            </div>';
-        
-        if (!empty($tags)) {
-            echo '<script>
-                    function copyAllTags() {
-                        const tags = ' . json_encode($tags) . ';
-                        const tagText = tags.join(", ");
-                        navigator.clipboard.writeText(tagText).then(() => {
-                            alert("Tags copied to clipboard!");
-                        });
-                    }
-                  </script>';
-        }
-        
+        echo '</div>
+                <div class="result-item">
+                    <div class="result-label">All Tags (Comma Separated)</div>
+                    <div class="result-value">
+                        <span>' . htmlspecialchars(implode(', ', $tags)) . '</span>
+                        <button class="copy-btn" data-clipboard-text="' . htmlspecialchars(implode(', ', $tags)) . '">
+                            <i class="fas fa-copy"></i> Copy All
+                        </button>
+                    </div>
+                </div>';
     } else {
-        echo '<div class="result-container result-error">
-                <h5><i class="fas fa-exclamation-triangle me-2"></i>Video Not Found</h5>
-                <p>Could not find video with ID: <strong>' . htmlspecialchars($video_id) . '</strong></p>
+        echo '<div class="result-item">
+                <div class="result-label">Tags</div>
+                <div class="result-value">No tags found for this video.</div>
               </div>';
     }
+    
+    echo '</div>
+          </div>';
     
 } catch (Exception $e) {
     $error_message = DEBUG_MODE ? $e->getMessage() : 'An error occurred while processing your request.';
     
-    echo '<div class="result-container result-error">
-            <h5><i class="fas fa-exclamation-triangle me-2"></i>API Error</h5>
-            <p>' . htmlspecialchars($error_message) . '</p>
+    echo '<div class="result-card">
+            <div class="result-header">
+                <i class="fas fa-exclamation-triangle result-icon"></i>
+                <h3 class="result-title">Error</h3>
+            </div>
+            <div class="result-content">
+                <p>' . htmlspecialchars($error_message) . '</p>
+            </div>
           </div>';
 }
 ?> 

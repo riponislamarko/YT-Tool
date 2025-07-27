@@ -1,120 +1,120 @@
 <?php
 /**
  * YouTube Thumbnail Downloader
- * Gets thumbnail download links for a YouTube video ID
+ * 
+ * This tool allows users to download thumbnails from YouTube videos
+ * in various qualities and formats.
  */
 
 // Include configuration
 require_once 'config.php';
 
-// Set headers for AJAX response
-header('Content-Type: text/html; charset=utf-8');
-
-// Check if request method is POST
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo '<div class="result-container result-error">
-            <h5><i class="fas fa-exclamation-triangle me-2"></i>Invalid Request</h5>
-            <p>This endpoint only accepts POST requests.</p>
+// Check if video_id is provided
+if (!isset($_POST['video_id']) || empty($_POST['video_id'])) {
+    echo '<div class="result-card">
+            <div class="result-header">
+                <i class="fas fa-exclamation-triangle result-icon"></i>
+                <h3 class="result-title">Video ID Required</h3>
+            </div>
+            <div class="result-content">
+                <p>Please provide a valid YouTube video ID.</p>
+            </div>
           </div>';
     exit;
 }
 
-// Get and sanitize input
-$video_id = isset($_POST['video_id']) ? trim($_POST['video_id']) : '';
-
-// Validate input
-if (empty($video_id)) {
-    echo '<div class="result-container result-error">
-            <h5><i class="fas fa-exclamation-triangle me-2"></i>Video ID Required</h5>
-            <p>Please enter a YouTube video ID.</p>
-          </div>';
-    exit;
-}
+$video_id = trim($_POST['video_id']);
 
 // Validate video ID format
 if (!preg_match('/^[a-zA-Z0-9_-]{11}$/', $video_id)) {
-    echo '<div class="result-container result-error">
-            <h5><i class="fas fa-exclamation-triangle me-2"></i>Invalid Video ID</h5>
-            <p>Video ID must be exactly 11 characters long and contain only letters, numbers, hyphens, and underscores.</p>
-            <small class="text-muted">Example: dQw4w9WgXcQ</small>
-          </div>';
-    exit;
-}
-
-// Check if API key is configured
-if (YOUTUBE_API_KEY === 'your_youtube_api_key_here') {
-    echo '<div class="result-container result-error">
-            <h5><i class="fas fa-exclamation-triangle me-2"></i>Configuration Error</h5>
-            <p>YouTube API key not configured. Please update config.php with your API key.</p>
-            <small class="text-muted">Get your API key from: <a href="https://console.developers.google.com/apis/credentials" target="_blank">Google Cloud Console</a></small>
+    echo '<div class="result-card">
+            <div class="result-header">
+                <i class="fas fa-exclamation-triangle result-icon"></i>
+                <h3 class="result-title">Invalid Video ID</h3>
+            </div>
+            <div class="result-content">
+                <p>The video ID must be exactly 11 characters long and contain only letters, numbers, hyphens, and underscores.</p>
+            </div>
           </div>';
     exit;
 }
 
 try {
-    // Get video information from YouTube API
+    // Get video information first
     $video_info = getVideoInfo($video_id);
     
     if ($video_info) {
-        $title = htmlspecialchars($video_info['title']);
-        $channel_title = htmlspecialchars($video_info['channel_title']);
-        
         // Generate thumbnail URLs
         $thumbnails = generateThumbnailUrls($video_id);
         
-        echo '<div class="result-container result-success">
-                <h5><i class="fas fa-check-circle me-2"></i>Thumbnails Found</h5>
-                <p><strong>Video:</strong> ' . $title . '</p>
-                <p><strong>Channel:</strong> ' . $channel_title . '</p>
-                
-                <div class="row mt-3">
-                    <div class="col-md-6">
-                        <h6><i class="fas fa-image me-2"></i>Thumbnail Preview</h6>
-                        <img src="' . $thumbnails['maxres'] . '" alt="Video Thumbnail" class="thumbnail-preview" onerror="this.src=\'' . $thumbnails['high'] . '\'">
+        echo '<div class="result-card">
+                <div class="result-header">
+                    <i class="fas fa-image result-icon"></i>
+                    <h3 class="result-title">Thumbnail Downloader</h3>
+                </div>
+                <div class="result-content">
+                    <div class="result-item">
+                        <div class="result-label">Video Title</div>
+                        <div class="result-value">' . htmlspecialchars($video_info['title']) . '</div>
                     </div>
-                    <div class="col-md-6">
-                        <h6><i class="fas fa-download me-2"></i>Download Links</h6>
-                        <div class="d-grid gap-2">';
+                    <div class="result-item">
+                        <div class="result-label">Channel</div>
+                        <div class="result-value">' . htmlspecialchars($video_info['channel_title']) . '</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">Video ID</div>
+                        <div class="result-value">
+                            <span>' . $video_id . '</span>
+                            <button class="copy-btn" data-clipboard-text="' . $video_id . '">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="thumbnail-grid">';
         
-        // Display download links for each quality
         foreach ($thumbnails as $quality => $url) {
-            $quality_label = ucfirst($quality);
-            $quality_info = getQualityInfo($quality);
+            $size = getQualityInfo($quality);
+            $quality_name = ucfirst($quality);
             
-            echo '<a href="' . $url . '" target="_blank" class="thumbnail-link">
-                    <i class="fas fa-download me-2"></i>' . $quality_label . ' (' . $quality_info . ')
-                    <button class="copy-btn ms-2" data-clipboard-text="' . $url . '">
-                        <i class="fas fa-copy"></i>
-                    </button>
-                  </a>';
+            echo '<div class="thumbnail-item">
+                    <img src="' . $url . '" alt="' . $quality_name . ' thumbnail" class="thumbnail-image" loading="lazy">
+                    <div class="thumbnail-info">
+                        <div class="thumbnail-size">' . $quality_name . ' (' . $size . ')</div>
+                        <a href="' . $url . '" target="_blank" class="copy-btn" style="margin-top: 8px; text-decoration: none;">
+                            <i class="fas fa-download"></i> Download
+                        </a>
+                    </div>
+                  </div>';
         }
         
         echo '</div>
-                    </div>
-                </div>
-                
-                <div class="mt-3">
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Video URL: <a href="https://youtube.com/watch?v=' . htmlspecialchars($video_id) . '" target="_blank">https://youtube.com/watch?v=' . htmlspecialchars($video_id) . '</a>
-                    </small>
                 </div>
               </div>';
     } else {
-        echo '<div class="result-container result-error">
-                <h5><i class="fas fa-exclamation-triangle me-2"></i>Video Not Found</h5>
-                <p>Could not find video with ID: <strong>' . htmlspecialchars($video_id) . '</strong></p>
-                <small class="text-muted">Make sure the video ID is correct and the video is publicly available.</small>
+        echo '<div class="result-card">
+                <div class="result-header">
+                    <i class="fas fa-exclamation-triangle result-icon"></i>
+                    <h3 class="result-title">Video Not Found</h3>
+                </div>
+                <div class="result-content">
+                    <p>Could not find video with ID: <strong>' . htmlspecialchars($video_id) . '</strong></p>
+                    <p>Make sure the video ID is correct and the video is publicly available.</p>
+                </div>
               </div>';
     }
     
 } catch (Exception $e) {
     $error_message = DEBUG_MODE ? $e->getMessage() : 'An error occurred while processing your request.';
     
-    echo '<div class="result-container result-error">
-            <h5><i class="fas fa-exclamation-triangle me-2"></i>API Error</h5>
-            <p>' . htmlspecialchars($error_message) . '</p>
-            <small class="text-muted">Please try again later or check your API key configuration.</small>
+    echo '<div class="result-card">
+            <div class="result-header">
+                <i class="fas fa-exclamation-triangle result-icon"></i>
+                <h3 class="result-title">Error</h3>
+            </div>
+            <div class="result-content">
+                <p>' . htmlspecialchars($error_message) . '</p>
+            </div>
           </div>';
 }
 
