@@ -1,130 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="YouTube Toolkit - Free tools for YouTube creators">
-    <meta name="keywords" content="YouTube, toolkit, data viewer, channel analysis, video tools">
-    <meta name="author" content="YouTube Toolkit">
-    <meta name="theme-color" content="#ffffff">
-    
-    <title>YouTube Toolkit - Free YouTube Tools</title>
-    
-    <!-- Preload critical resources -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Custom Styles -->
-    <link href="assets/style.css" rel="stylesheet">
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎥</text></svg>">
-</head>
-<body>
-    <!-- Skip to main content for accessibility -->
-    <a href="#main-content" class="skip-link">Skip to main content</a>
-    
-    <!-- Main Container -->
-    <div class="container" id="main-content">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-content">
-                <h1 class="logo">
-                    <i class="fas fa-play-circle"></i>
-                    <span>YouTube Toolkit</span>
-                </h1>
-                <p class="tagline">Free tools for YouTube creators</p>
-            </div>
-        </header>
-        
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Search Section -->
-            <section class="search-section">
-                <div class="search-container">
-                    <div class="search-box">
-                        <div class="search-input-wrapper">
-                            <i class="fas fa-search search-icon"></i>
-                            <input type="text" 
-                                   id="youtubeInput" 
-                                   class="search-input" 
-                                   placeholder="Enter YouTube URL, video ID, channel ID, or channel handle"
-                                   autocomplete="off">
-                        </div>
-                        <div class="tool-selector">
-                            <button class="tool-btn active" data-tool="data">
-                                <i class="fas fa-chart-bar"></i>
-                                <span>Data Viewer</span>
-                            </button>
-                            <button class="tool-btn" data-tool="channel">
-                                <i class="fas fa-search"></i>
-                                <span>Channel Finder</span>
-                            </button>
-                            <button class="tool-btn" data-tool="thumbnail">
-                                <i class="fas fa-image"></i>
-                                <span>Thumbnails</span>
-                            </button>
-                            <button class="tool-btn" data-tool="tags">
-                                <i class="fas fa-tags"></i>
-                                <span>Tags</span>
-                            </button>
-                            <button class="tool-btn" data-tool="search">
-                                <i class="fas fa-video"></i>
-                                <span>Search</span>
-                            </button>
-                        </div>
-                        <button class="analyze-btn" id="searchBtn">
-                            <i class="fas fa-play"></i>
-                            <span>Analyze</span>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Status Messages -->
-                <div class="status-container">
-                    <div class="status-message success" id="successMessage" style="display: none;">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Success!</span>
-                    </div>
-                    <div class="status-message error" id="errorMessage" style="display: none;">
-                        <i class="fas fa-exclamation-circle"></i>
-                        <span>Please enter a valid YouTube URL, video ID, channel ID, or channel handle.</span>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Results Section -->
-            <section class="results-section">
-                <div class="results-container" id="resultsContainer" style="display: none;">
-                    <div class="results-content" id="resultsContent"></div>
-                </div>
-            </section>
-        </main>
-        
-        <!-- Footer -->
-        <footer class="footer">
-            <div class="footer-content">
-                <div class="footer-links">
-                    <a href="#" class="footer-link">Privacy Policy</a>
-                    <a href="#" class="footer-link">Terms of Service</a>
-                    <a href="#" class="footer-link">Contact</a>
-                </div>
-                <div class="footer-copyright">
-                    <p>&copy; 2024 YouTube Toolkit. All rights reserved.</p>
-                </div>
-            </div>
-        </footer>
-    </div>
-    
-    <!-- Custom JavaScript -->
-    <script src="assets/script.js"></script>
-</body>
-</html>
-
 <?php
 // Data Viewer Functionality
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url']) && isset($_POST['tool']) && $_POST['tool'] === 'data') {
@@ -195,21 +68,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url']) && isset($_POS
             $statistics = $video['statistics'];
             $contentDetails = $video['contentDetails'];
             $player = $video['player'];
-            
-            // Get channel data for thumbnail
+            $thumbnailUrl = $snippet['thumbnails']['maxres']['url'] ?? $snippet['thumbnails']['high']['url'];
+            $videoUrl = 'https://www.youtube.com/watch?v=' . $videoId;
+
+            // Get channel data for thumbnail and subscriber count
             $channelIdForThumb = $snippet['channelId'];
-            $channelUrlForThumb = "https://www.googleapis.com/youtube/v3/channels?part=snippet&id={$channelIdForThumb}&key=" . YOUTUBE_API_KEY;
+            $channelUrlForThumb = "https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id={$channelIdForThumb}&key=" . YOUTUBE_API_KEY;
             $channelResponseThumb = file_get_contents($channelUrlForThumb);
             $channelDataThumb = json_decode($channelResponseThumb, true);
             $channelThumbnail = !empty($channelDataThumb['items'][0]['snippet']['thumbnails']['default']['url']) ? $channelDataThumb['items'][0]['snippet']['thumbnails']['default']['url'] : '';
+            $subscriberCount = !empty($channelDataThumb['items'][0]['statistics']['subscriberCount']) ? number_format($channelDataThumb['items'][0]['statistics']['subscriberCount']) : 'N/A';
+
 
             // Format numbers
-            $viewCount = number_format($statistics['viewCount'] ?? 0);
-            $likeCount = number_format($statistics['likeCount'] ?? 0);
-            $dislikeCount = number_format($statistics['dislikeCount'] ?? 0);
-            $favoriteCount = number_format($statistics['favoriteCount'] ?? 0);
-            $commentCount = number_format($statistics['commentCount'] ?? 0);
+            $viewCountNum = (int)($statistics['viewCount'] ?? 0);
+            $likeCountNum = (int)($statistics['likeCount'] ?? 0);
+            $commentCountNum = (int)($statistics['commentCount'] ?? 0);
+
+            $viewCount = number_format($viewCountNum);
+            $likeCount = number_format($likeCountNum);
+            $commentCount = number_format($commentCountNum);
             $duration = $contentDetails['duration'];
+
+            // --- Revenue Estimation ---
+            $rpmLow = 1.5; // Lower end of RPM range
+            $rpmHigh = 4.0; // Higher end of RPM range
+            $estimatedRevenueLow = ($viewCountNum / 1000) * $rpmLow;
+            $estimatedRevenueHigh = ($viewCountNum / 1000) * $rpmHigh;
+
+            // --- Performance Ratios ---
+            $likesPer1000Views = $viewCountNum > 0 ? round(($likeCountNum / $viewCountNum) * 1000, 2) : 0;
+            $commentsPer1000Views = $viewCountNum > 0 ? round(($commentCountNum / $viewCountNum) * 1000, 2) : 0;
+            $likeToCommentRatio = $commentCountNum > 0 ? round($likeCountNum / $commentCountNum, 2) : 0;
             
             // Convert ISO 8601 duration to readable format
             preg_match('/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/', $duration, $matches);
@@ -217,94 +107,107 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url']) && isset($_POS
             $minutes = isset($matches[2]) ? intval($matches[2]) : 0;
             $seconds = isset($matches[3]) ? intval($matches[3]) : 0;
             $formattedDuration = sprintf('%02d:%02d:%02d', $hours, $minutes, $seconds);
-            
-            echo '<div class="result-card">
-                    <div class="result-header">
-                        <i class="fas fa-video result-icon"></i>
-                        <h3 class="result-title">Video Data</h3>
+            $publishedDate = date('F j, Y', strtotime($snippet['publishedAt']));
+
+            // Start of new layout
+            echo <<<HTML
+            <div class="video-data-container">
+                <header class="video-section video-header">
+                    <h2 class="video-title">{$snippet['title']}</h2>
+                    <div class="channel-info">
+                        <img src="{$channelThumbnail}" alt="Channel Thumbnail" class="channel-thumbnail">
+                        <div>
+                            <div class="channel-name">{$snippet['channelTitle']}</div>
+                            <div class="text-secondary">{$subscriberCount} Subscribers</div>
+                        </div>
                     </div>
-                    <div class="result-content">
-                        <div class="video-player">
-                        ' . $player['embedHtml'] . '
+                    <div class="actions-container">
+                        <a href="{$thumbnailUrl}" download class="action-btn"><i class="fas fa-download"></i> Download Thumbnail</a>
+                        <button class="action-btn copy-btn" data-clipboard-text="{$videoUrl}"><i class="fas fa-copy"></i> Copy Video URL</button>
+                    </div>
+                </header>
+
+                <main class="video-main">
+                    <img src="{$thumbnailUrl}" alt="Video Thumbnail" class="video-thumbnail">
+                    <div class="video-section stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value">{$viewCount}</div>
+                            <div class="stat-label">Views</div>
                         </div>
-                        <div class="data-grid">
-                            <div class="data-item">
-                                <div class="data-label">Title</div>
-                                <div class="data-value">' . htmlspecialchars($snippet['title']) . '</div>
-                            </div>
-                            <div class="data-item">
-                                <div class="data-label">Channel</div>
-                                <div class="data-value">
-                                    <img src="' . $channelThumbnail . '" class="channel-thumbnail" alt="Channel Thumbnail">
-                                    ' . htmlspecialchars($snippet['channelTitle']) . '
-                                </div>
-                            </div>
-                            <div class="data-item">
-                                <div class="data-label">Published</div>
-                                <div class="data-value">' . date('F j, Y', strtotime($snippet['publishedAt'])) . '</div>
-                            </div>
-                            <div class="data-item">
-                                <div class="data-label">Duration</div>
-                                <div class="data-value">' . $formattedDuration . '</div>
-                            </div>
-                            <div class="data-item">
-                                <div class="data-label">Views</div>
-                                <div class="data-value">' . $viewCount . '</div>
-                            </div>
-                            <div class="data-item">
-                                <div class="data-label">Likes</div>
-                                <div class="data-value">' . $likeCount . '</div>
-                            </div>
-                             <div class="data-item">
-                                <div class="data-label">Dislikes</div>
-                                <div class="data-value">' . $dislikeCount . '</div>
-                            </div>
-                             <div class="data-item">
-                                <div class="data-label">Favorites</div>
-                                <div class="data-value">' . $favoriteCount . '</div>
-                            </div>
-                            <div class="data-item">
-                                <div class="data-label">Comments</div>
-                                <div class="data-value">' . $commentCount . '</div>
-                            </div>
-                            <div class="data-item">
-                                <div class="data-label">Video ID</div>
-                                <div class="data-value">
-                                    <span>' . $videoId . '</span>
-                                    <button class="copy-btn" data-clipboard-text="' . $videoId . '">
-                                        <i class="fas fa-copy"></i> Copy
-                                    </button>
-                                </div>
-                            </div>
-                             <div class="data-item">
-                                <div class="data-label">Definition</div>
-                                <div class="data-value">' . ucfirst($contentDetails['definition']) . '</div>
-                            </div>
-                             <div class="data-item">
-                                <div class="data-label">Licensed Content</div>
-                                <div class="data-value">' . ($contentDetails['licensedContent'] ? 'Yes' : 'No') . '</div>
-                            </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{$likeCount}</div>
+                            <div class="stat-label">Likes</div>
                         </div>
-                        <div class="result-item">
-                            <div class="result-label">Description</div>
-                            <div class="result-value">' . nl2br(htmlspecialchars($snippet['description'])) . '</div>
+                        <div class="stat-item">
+                            <div class="stat-value">{$commentCount}</div>
+                            <div class="stat-label">Comments</div>
                         </div>
-                        <div class="result-item">
-                            <div class="result-label">Tags</div>
-                            <div class="result-value">' . (isset($snippet['tags']) ? implode(', ', $snippet['tags']) : 'No tags') . '</div>
-                        </div>
-                        <div class="result-item">
-                            <div class="result-label">Video URL</div>
-                            <div class="result-value">
-                                <a href="https://www.youtube.com/watch?v=' . $videoId . '" target="_blank">https://www.youtube.com/watch?v=' . $videoId . '</a>
-                                <button class="copy-btn" data-clipboard-text="https://www.youtube.com/watch?v=' . $videoId . '">
-                                    <i class="fas fa-copy"></i> Copy
-                                </button>
+                    </div>
+                </main>
+
+                <aside class="video-sidebar">
+                    <div class="video-section">
+                        <h3 class="section-title">Video Details</h3>
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <div class="stat-label">Published On</div>
+                                <div class="stat-value-small">{$publishedDate}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="stat-label">Duration</div>
+                                <div class="stat-value-small">{$formattedDuration}</div>
                             </div>
                         </div>
                     </div>
-                  </div>';
-                  
+                     <div class="video-section">
+                        <h3 class="section-title">Estimated Revenue</h3>
+                        <div class="stat-item">
+                            <div class="stat-value">$ {$estimatedRevenueLow} - $ {$estimatedRevenueHigh}</div>
+                        </div>
+                        <p class="disclaimer">*Based on a standard RPM range.</p>
+                    </div>
+                </aside>
+
+                <div class="video-section video-description">
+                    <h3 class="section-title">Description</h3>
+                    <div class="description-content">{$snippet['description']}</div>
+                </div>
+
+                <div class="video-section video-tags">
+                    <h3 class="section-title">Tags</h3>
+                    <div class="tags-container">
+HTML;
+            if (!empty($snippet['tags'])) {
+                foreach ($snippet['tags'] as $tag) {
+                    echo "<span class='tag-item'>{$tag}</span>";
+                }
+            } else {
+                echo "<span>No tags available.</span>";
+            }
+            echo <<<HTML
+                    </div>
+                </div>
+
+                <div class="video-section video-extra-stats">
+                    <h3 class="section-title">Performance Statistics</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value">{$likesPer1000Views}</div>
+                            <div class="stat-label">Likes per 1,000 Views</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{$commentsPer1000Views}</div>
+                            <div class="stat-label">Comments per 1,000 Views</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">{$likeToCommentRatio}:1</div>
+                            <div class="stat-label">Like-to-Comment Ratio</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+HTML;
+
         } elseif ($channelId || $channelHandle) {
             // Get channel data
             $channelParam = $channelId ? "id={$channelId}" : "forHandle=@{$channelHandle}";
@@ -416,4 +319,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['url']) && isset($_POS
               </div>';
     }
 }
-?> 
+?>
