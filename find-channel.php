@@ -24,72 +24,88 @@ if (!isset($_POST['input']) || empty($_POST['input'])) {
 
 $input = trim($_POST['input']);
 
-try {
-    $channel_id = null;
-    $channel_handle = null;
-    $channel_title = null;
-    $channel_url = null;
-    
+function get_channel_id_from_input($input, $api_key) {
     // Check if it's already a channel ID
     if (preg_match('/^UC[a-zA-Z0-9_-]{22}$/', $input)) {
-        $channel_id = $input;
-        $channel_url = "https://www.youtube.com/channel/{$channel_id}";
+        return $input;
     }
-    // Check if it's a channel handle
-    elseif (preg_match('/^@([a-zA-Z0-9_-]+)$/', $input, $matches)) {
-        $channel_handle = $matches[1];
-        $channel_url = "https://www.youtube.com/@{$channel_handle}";
-    }
-    // Check if it's a channel URL
-    elseif (preg_match('/youtube\.com\/(?:channel\/|c\/|user\/|@)([^\/\?]+)/', $input, $matches)) {
-        $handle_or_id = $matches[1];
-        
-        if (preg_match('/^UC[a-zA-Z0-9_-]{22}$/', $handle_or_id)) {
-            $channel_id = $handle_or_id;
-            $channel_url = "https://www.youtube.com/channel/{$channel_id}";
-        } else {
-            $channel_handle = $handle_or_id;
-            $channel_url = "https://www.youtube.com/@{$channel_handle}";
+
+    $query = '';
+
+    // Extract query from handle or URL
+    if (preg_match('/^@([a-zA-Z0-9_-]+)$/', $input, $matches)) {
+        $query = $matches[1];
+    } elseif (preg_match('/youtube\.com\/(?:channel\/|c\/|user\/|@)([^\/\?]+)/', $input, $matches)) {
+        $query = $matches[1];
+        if (preg_match('/^UC[a-zA-Z0-9_-]{22}$/', $query)) {
+            return $query;
         }
+    } elseif (preg_match('/^[a-zA-Z0-9_-]+$/', $input)) {
+        $query = $input;
     }
-    // Check if it's just a handle without @
-    elseif (preg_match('/^[a-zA-Z0-9_-]+$/', $input)) {
-        $channel_handle = $input;
-        $channel_url = "https://www.youtube.com/@{$channel_handle}";
+
+    if (empty($query)) {
+        return null;
     }
-    
-    if (!$channel_id && !$channel_handle) {
-        echo '<div class="result-card">
-                <div class="result-header">
-                    <i class="fas fa-exclamation-triangle result-icon"></i>
-                    <h3 class="result-title">Invalid Input</h3>
-                </div>
-                <div class="result-content">
-                    <p>Please provide a valid channel URL, channel ID, or channel handle.</p>
-                    <p>Examples:</p>
-                    <ul>
-                        <li>Channel ID: UC_x5XG1OV2P6uZZ5FSM9Ttw</li>
-                        <li>Channel Handle: @GoogleDevelopers</li>
-                        <li>Channel URL: https://www.youtube.com/channel/UC_x5XG1OV2P6uZZ5FSM9Ttw</li>
-                    </ul>
-                </div>
-              </div>';
-        exit;
-    }
-    
-    // Get channel information from YouTube API
-    $api_key = YOUTUBE_API_KEY;
-    
-    if ($channel_id) {
-        $url = "https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=" . urlencode($channel_id) . "&key=" . $api_key;
-    } else {
-        $url = "https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&forHandle=@" . urlencode($channel_handle) . "&key=" . $api_key;
-    }
+
+    // Use search API to find channel ID
+    $search_url = "https://www.googleapis.com/youtube/v3/search?part=snippet&q=" . urlencode($query) . "&type=channel&maxResults=1&key=" . $api_key;
     
     $context = stream_context_create([
         'http' => [
             'timeout' => REQUEST_TIMEOUT,
-            'user_agent' => 'YouTube-Utility-Tool/1.0'
+            'user_agent' => 'YouTube-Utility-Tool/1.0',
+            'ignore_errors' => true
+        ]
+    ]);
+
+    $response = @file_get_contents($search_url, false, $context);
+    if ($response === false) {
+        throw new Exception('Failed to connect to YouTube Search API');
+    }
+
+    $data = json_decode($response, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        throw new Exception('Invalid JSON response from Search API');
+    }
+
+    if (isset($data['error'])) {
+        throw new Exception('YouTube API Error: ' . $data['error']['message']);
+    }
+
+    if (empty($data['items'])) {
+        return null; // Channel not found
+    }
+
+    return $data['items'][0]['snippet']['channelId'];
+}
+
+try {
+    $api_key = YOUTUBE_API_KEY;
+    $channel_id = get_channel_id_from_input($input, $api_key);
+
+    if (!$channel_id) {
+        echo '<div class="result-card">
+                <div class="result-header">
+                    <i class="fas fa-exclamation-triangle result-icon"></i>
+                    <h3 class="result-title">Channel Not Found</h3>
+                </div>
+                <div class="result-content">
+                    <p>Could not find a channel with the provided input.</p>
+                    <p>Please check the channel URL, ID, or handle and try again.</p>
+                </div>
+              </div>';
+        exit;
+    }
+
+    // Get channel information from YouTube API
+    $url = "https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=" . urlencode($channel_id) . "&key=" . $api_key;
+    
+    $context = stream_context_create([
+        'http' => [
+            'timeout' => REQUEST_TIMEOUT,
+            'user_agent' => 'YouTube-Utility-Tool/1.0',
+            'ignore_errors' => true
         ]
     ]);
     
