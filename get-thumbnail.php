@@ -47,50 +47,38 @@ try {
         // Generate thumbnail URLs
         $thumbnails = generateThumbnailUrls($video_id);
         
-        echo '<div class="result-card">
-                <div class="result-header">
-                    <i class="fas fa-image result-icon"></i>
-                    <h3 class="result-title">Thumbnail Downloader</h3>
-                </div>
-                <div class="result-content">
-                    <div class="result-item">
-                        <div class="result-label">Video Title</div>
-                        <div class="result-value">' . htmlspecialchars($video_info['title']) . '</div>
-                    </div>
-                    <div class="result-item">
-                        <div class="result-label">Channel</div>
-                        <div class="result-value">' . htmlspecialchars($video_info['channel_title']) . '</div>
-                    </div>
-                    <div class="result-item">
-                        <div class="result-label">Video ID</div>
-                        <div class="result-value">
-                            <span>' . $video_id . '</span>
-                            <button class="copy-btn" data-clipboard-text="' . $video_id . '">
-                                <i class="fas fa-copy"></i> Copy
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="thumbnail-grid">';
-        
+        echo <<<HTML
+        <div class="video-section thumbnail-downloader">
+            <h2 class="section-title">Thumbnails for: {$video_info['title']}</h2>
+            <p class="text-secondary">Click on a thumbnail to download the highest quality version, or choose a specific size below.</p>
+            <div class="thumbnail-grid">
+HTML;
+
         foreach ($thumbnails as $quality => $url) {
             $size = getQualityInfo($quality);
             $quality_name = ucfirst($quality);
             
-            echo '<div class="thumbnail-item">
-                    <img src="' . $url . '" alt="' . $quality_name . ' thumbnail" class="thumbnail-image" loading="lazy">
+            echo <<<HTML
+                <div class="thumbnail-item">
+                    <a href="{$url}" download>
+                        <img src="{$url}" alt="{$quality_name} thumbnail" class="thumbnail-image" loading="lazy">
+                    </a>
                     <div class="thumbnail-info">
-                        <div class="thumbnail-size">' . $quality_name . ' (' . $size . ')</div>
-                        <a href="' . $url . '" target="_blank" class="copy-btn" style="margin-top: 8px; text-decoration: none;">
-                            <i class="fas fa-download"></i> Download
+                        <div class="thumbnail-size">{$quality_name} ({$size})</div>
+                        <a href="{$url}" download class="action-btn download-btn">
+                            <i class="fas fa-download"></i>
+                            <span>Download</span>
                         </a>
                     </div>
-                  </div>';
+                </div>
+HTML;
         }
         
-        echo '</div>
-                </div>
-              </div>';
+        echo <<<HTML
+            </div>
+        </div>
+HTML;
+
     } else {
         echo '<div class="result-card">
                 <div class="result-header">

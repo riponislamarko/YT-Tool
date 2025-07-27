@@ -1,15 +1,41 @@
-// YouTube Toolkit - Modern UI/UX JavaScript
-
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize all components
+    initializeTheme();
     initializeToolSelector();
     initializeInput();
     initializeSearch();
     initializeKeyboardNavigation();
-    
-    // Add smooth page load animation
-    document.body.classList.add('loaded');
 });
+
+// --- THEME SWITCHER ---
+function initializeTheme() {
+    const lightBtn = document.getElementById('theme-light-btn');
+    const darkBtn = document.getElementById('theme-dark-btn');
+    const userPreference = localStorage.getItem('theme');
+
+    const setTheme = (theme) => {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        lightBtn.classList.toggle('active', theme === 'light');
+        darkBtn.classList.toggle('active', theme === 'dark');
+    };
+
+    // Set initial theme
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initialTheme = userPreference || (prefersDark ? 'dark' : 'light');
+    setTheme(initialTheme);
+
+    // Add event listeners
+    lightBtn.addEventListener('click', () => setTheme('light'));
+    darkBtn.addEventListener('click', () => setTheme('dark'));
+
+    // Listen for system theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+        if (!localStorage.getItem('theme')) {
+            setTheme(e.matches ? 'dark' : 'light');
+        }
+    });
+}
 
 // Enhanced Tool Selector functionality
 function initializeToolSelector() {
@@ -119,15 +145,6 @@ function initializeInput() {
                 searchBtn.disabled = false;
             }
         }, 10);
-    });
-    
-    // Focus management
-    input.addEventListener('focus', function() {
-        this.parentElement.style.borderColor = 'var(--primary-color)';
-    });
-    
-    input.addEventListener('blur', function() {
-        this.parentElement.style.borderColor = '';
     });
     
     // Initialize button state
@@ -251,7 +268,7 @@ function processRequest(value, tool) {
     
     switch (tool) {
         case 'data':
-            endpoint = 'index.php';
+            endpoint = 'data-viewer.php';
             params = { url: value, tool: 'data' };
             break;
         case 'channel':
@@ -316,7 +333,7 @@ function showLoading() {
 function hideLoading() {
     const searchBtn = document.getElementById('searchBtn');
     if (searchBtn) {
-        searchBtn.innerHTML = '<i class="fas fa-play"></i><span>Analyze</span>';
+        searchBtn.innerHTML = '<span>Analyze</span>';
         searchBtn.disabled = false;
     }
 }
@@ -332,13 +349,19 @@ function showResults(data) {
     }
     
     resultsContent.innerHTML = data;
-    resultsContainer.style.display = 'block';
+    resultsContainer.style.display = 'block'; // Make the container visible
     
+    // Use a timeout to allow the display property to apply before adding the class for the animation
+    setTimeout(() => {
+        resultsContainer.classList.add('visible');
+    }, 10);
+
     // Initialize copy buttons in results
     initializeCopyButtons();
+    initializeTagCopier();
     
     // Scroll to results
-    resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // Show status message
@@ -398,18 +421,32 @@ function initializeCopyButtons() {
     });
 }
 
+// --- TAG COPIER ---
+function initializeTagCopier() {
+    const copyAllBtn = document.getElementById('copy-all-tags-btn');
+    if (!copyAllBtn) return;
+
+    copyAllBtn.addEventListener('click', () => {
+        const tagsContainer = document.getElementById('tags-container');
+        const tags = Array.from(tagsContainer.querySelectorAll('.tag-item')).map(tag => tag.textContent);
+        const tagsString = tags.join(', ');
+        
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(tagsString).then(() => {
+                showCopySuccess(copyAllBtn);
+            });
+        } else {
+            fallbackCopyTextToClipboard(tagsString, copyAllBtn);
+        }
+    });
+}
+
 // Show copy success feedback
 function showCopySuccess(button) {
     const originalText = button.innerHTML;
-    const originalClass = button.className;
-    
     button.innerHTML = '<i class="fas fa-check"></i> Copied!';
-    button.classList.add('copied');
-    
     setTimeout(() => {
         button.innerHTML = originalText;
-        button.classList.remove('copied');
-        button.className = originalClass;
     }, 2000);
 }
 
@@ -428,8 +465,6 @@ function fallbackCopyTextToClipboard(text, button) {
         const successful = document.execCommand('copy');
         if (successful) {
             showCopySuccess(button);
-        } else {
-            console.error('Failed to copy text');
         }
     } catch (err) {
         console.error('Fallback: Oops, unable to copy', err);
@@ -439,10 +474,6 @@ function fallbackCopyTextToClipboard(text, button) {
 }
 
 // Utility functions
-function isValidVideoId(videoId) {
-    return /^[a-zA-Z0-9_-]{11}$/.test(videoId);
-}
-
 function extractVideoId(url) {
     const patterns = [
         /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
@@ -458,4 +489,4 @@ function extractVideoId(url) {
     }
     
     return null;
-} 
+}

@@ -85,60 +85,28 @@ try {
     $snippet = $video['snippet'];
     $tags = $snippet['tags'] ?? [];
     
-    echo '<div class="result-card">
-            <div class="result-header">
-                <i class="fas fa-tags result-icon"></i>
-                <h3 class="result-title">Tag Extractor</h3>
-            </div>
-            <div class="result-content">
-                <div class="result-item">
-                    <div class="result-label">Video Title</div>
-                    <div class="result-value">' . htmlspecialchars($snippet['title']) . '</div>
-                </div>
-                <div class="result-item">
-                    <div class="result-label">Channel</div>
-                    <div class="result-value">' . htmlspecialchars($snippet['channelTitle']) . '</div>
-                </div>
-                <div class="result-item">
-                    <div class="result-label">Video ID</div>
-                    <div class="result-value">
-                        <span>' . $video_id . '</span>
-                        <button class="copy-btn" data-clipboard-text="' . $video_id . '">
-                            <i class="fas fa-copy"></i> Copy
-                        </button>
-                    </div>
-                </div>
-                <div class="result-item">
-                    <div class="result-label">Tags Found</div>
-                    <div class="result-value">' . count($tags) . ' tags</div>
-                </div>';
-    
+    echo <<<HTML
+    <div class="video-section tag-extractor">
+        <h2 class="section-title">Tags for: {$snippet['title']}</h2>
+        <div class="actions-container">
+            <button class="action-btn" id="copy-all-tags-btn"><i class="fas fa-copy"></i> Copy All Tags</button>
+            <div class="tag-count">Found {$tag_count} tags</div>
+        </div>
+        <div class="tags-container" id="tags-container">
+HTML;
+
     if (!empty($tags)) {
-        echo '<div class="tag-cloud">';
-        
         foreach ($tags as $tag) {
-            echo '<div class="tag-item">' . htmlspecialchars($tag) . '</div>';
+            echo '<span class="tag-item">' . htmlspecialchars($tag) . '</span>';
         }
-        
-        echo '</div>
-                <div class="result-item">
-                    <div class="result-label">All Tags (Comma Separated)</div>
-                    <div class="result-value">
-                        <span>' . htmlspecialchars(implode(', ', $tags)) . '</span>
-                        <button class="copy-btn" data-clipboard-text="' . htmlspecialchars(implode(', ', $tags)) . '">
-                            <i class="fas fa-copy"></i> Copy All
-                        </button>
-                    </div>
-                </div>';
     } else {
-        echo '<div class="result-item">
-                <div class="result-label">Tags</div>
-                <div class="result-value">No tags found for this video.</div>
-              </div>';
+        echo "<p>No tags found for this video.</p>";
     }
-    
-    echo '</div>
-          </div>';
+
+    echo <<<HTML
+        </div>
+    </div>
+HTML;
     
 } catch (Exception $e) {
     $error_message = DEBUG_MODE ? $e->getMessage() : 'An error occurred while processing your request.';

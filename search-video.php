@@ -38,114 +38,112 @@ if (strlen($keyword) < 2) {
 }
 
 try {
-    // Search for videos using YouTube API
+    // Step 1: Search for videos to get their IDs
     $api_key = YOUTUBE_API_KEY;
-    $url = "https://www.googleapis.com/youtube/v3/search?part=snippet&q=" . urlencode($keyword) . "&type=video&maxResults=10&key=" . $api_key;
+    $search_url = "https://www.googleapis.com/youtube/v3/search?part=snippet&q=" . urlencode($keyword) . "&type=video&maxResults=12&key=" . $api_key;
     
-    $context = stream_context_create([
-        'http' => [
-            'timeout' => REQUEST_TIMEOUT,
-            'user_agent' => 'YouTube-Utility-Tool/1.0'
-        ]
-    ]);
+    $search_response = @file_get_contents($search_url);
+    if ($search_response === false) throw new Exception('Failed to connect to YouTube API for search.');
     
-    $response = @file_get_contents($url, false, $context);
-    
-    if ($response === false) {
-        throw new Exception('Failed to connect to YouTube API');
-    }
-    
-    $data = json_decode($response, true);
-    
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new Exception('Invalid JSON response from API');
-    }
-    
-    // Check for API errors
-    if (isset($data['error'])) {
-        $error_message = isset($data['error']['message']) ? $data['error']['message'] : 'Unknown API error';
-        throw new Exception('YouTube API Error: ' . $error_message);
-    }
-    
-    if (empty($data['items'])) {
-        echo '<div class="result-card">
-                <div class="result-header">
-                    <i class="fas fa-search result-icon"></i>
-                    <h3 class="result-title">No Results Found</h3>
-                </div>
-                <div class="result-content">
-                    <p>No videos found for: <strong>' . htmlspecialchars($keyword) . '</strong></p>
-                    <p>Try different keywords or check your spelling.</p>
-                </div>
-              </div>';
+    $search_data = json_decode($search_response, true);
+    if (json_last_error() !== JSON_ERROR_NONE) throw new Exception('Invalid JSON response from search API.');
+    if (isset($search_data['error'])) throw new Exception('YouTube API Error: ' . $search_data['error']['message']);
+
+    if (empty($search_data['items'])) {
+        echo '<div class="video-section"><p>No videos found for: <strong>' . htmlspecialchars($keyword) . '</strong></p></div>';
         exit;
     }
+
+    // Step 2: Get details for all found videos in a single call
+    $video_ids = array_map(function($item) {
+        return $item['id']['videoId'];
+    }, $search_data['items']);
     
-    $total_results = $data['pageInfo']['totalResults'] ?? 0;
-    $results_per_page = $data['pageInfo']['resultsPerPage'] ?? 0;
+    $details_url = "https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=" . implode(',', $video_ids) . "&key=" . $api_key;
     
-    echo '<div class="result-card">
-            <div class="result-header">
-                <i class="fas fa-search result-icon"></i>
-                <h3 class="result-title">Search Results</h3>
-            </div>
-            <div class="result-content">
-                <div class="result-item">
-                    <div class="result-label">Search Term</div>
-                    <div class="result-value">' . htmlspecialchars($keyword) . '</div>
-                </div>
-                <div class="result-item">
-                    <div class="result-label">Results Found</div>
-                    <div class="result-value">' . number_format($total_results) . ' videos</div>
-                </div>
-                
-                <div class="search-results">';
-    
-    foreach ($data['items'] as $item) {
+    $details_response = @file_get_contents($details_url);
+    if ($details_response === false) throw new Exception('Failed to connect to YouTube API for video details.');
+
+    $details_data = json_decode($details_response, true);
+    if (json_last_error() !== JSON_ERROR_NONE) throw new Exception('Invalid JSON response from video details API.');
+    if (isset($details_data['error'])) throw new Exception('YouTube API Error: ' . $details_data['error']['message']);
+
+    // Create a map of video details for easy lookup
+    $video_details_map = [];
+    foreach ($details_data['items'] as $item) {
+        $video_details_map[$item['id']] = $item;
+    }
+
+    // Step 3: Display the results in a modern grid
+    echo '<div class="video-section search-results-container">';
+    echo '<h2 class="section-title">Search Results for: "' . htmlspecialchars($keyword) . '"</h2>';
+    echo '<div class="search-results-grid">';
+
+    foreach ($search_data['items'] as $item) {
         $video_id = $item['id']['videoId'];
         $snippet = $item['snippet'];
+        $details = $video_details_map[$video_id] ?? null;
+
+        if (!$details) continue; // Skip if details weren't found
+
+        // --- Data formatting ---
         $title = htmlspecialchars($snippet['title']);
         $channel_title = htmlspecialchars($snippet['channelTitle']);
-        $published_date = date('M j, Y', strtotime($snippet['publishedAt']));
-        $description = htmlspecialchars(substr($snippet['description'], 0, 150));
-        $thumbnail_url = $snippet['thumbnails']['medium']['url'] ?? $snippet['thumbnails']['default']['url'];
+        $thumbnail_url = $snippet['thumbnails']['high']['url'] ?? $snippet['thumbnails']['default']['url'];
+        $video_url = "https://www.youtube.com/watch?v=" . $video_id;
         
-        echo '<div class="search-item">
-                <div class="search-item-header">
-                    <img src="' . $thumbnail_url . '" alt="Video thumbnail" class="search-thumbnail">
-                    <div class="search-item-content">
-                        <div class="search-item-title">
-                            <a href="https://www.youtube.com/watch?v=' . $video_id . '" target="_blank">' . $title . '</a>
-                        </div>
-                        <div class="search-item-channel">' . $channel_title . '</div>
-                        <div class="search-item-meta">
-                            Published: ' . $published_date . ' • 
-                            Video ID: ' . $video_id . '
-                            <button class="copy-btn" data-clipboard-text="' . $video_id . '" style="margin-left: 8px;">
-                                <i class="fas fa-copy"></i> Copy ID
-                            </button>
-                        </div>
-                        <div class="search-item-meta">' . $description . (strlen($snippet['description']) > 150 ? '...' : '') . '</div>
-                    </div>
+        // Format view count
+        $view_count = 'N/A';
+        if (isset($details['statistics']['viewCount'])) {
+            $raw_views = (int)$details['statistics']['viewCount'];
+            if ($raw_views > 1000000) $view_count = round($raw_views / 1000000, 1) . 'M';
+            elseif ($raw_views > 1000) $view_count = round($raw_views / 1000, 1) . 'K';
+            else $view_count = $raw_views;
+        }
+
+        // Format duration
+        $duration = 'N/A';
+        if (isset($details['contentDetails']['duration'])) {
+            $interval = new DateInterval($details['contentDetails']['duration']);
+            if ($interval->h > 0) $duration = $interval->format('%h:%I:%S');
+            else $duration = $interval->format('%i:%S');
+        }
+
+        // Format published date
+        $published_date = 'N/A';
+        if (isset($snippet['publishedAt'])) {
+            $published_date = date('M j, Y', strtotime($snippet['publishedAt']));
+        }
+
+        echo <<<HTML
+        <div class="video-card">
+            <a href="{$video_url}" target="_blank" class="thumbnail-link">
+                <img src="{$thumbnail_url}" alt="Thumbnail for {$title}" class="video-card-thumbnail">
+                <div class="thumbnail-overlay">
+                    <span class="video-duration">{$duration}</span>
                 </div>
-              </div>';
-    }
-    
-    echo '</div>
+            </a>
+            <div class="video-card-content">
+                <h3 class="video-card-title">
+                    <a href="{$video_url}" target="_blank">{$title}</a>
+                </h3>
+                <div class="video-card-meta">
+                    <span class="channel-name">{$channel_title}</span>
+                    <span class="meta-separator">•</span>
+                    <span class="view-count">{$view_count} views</span>
+                    <span class="meta-separator">•</span>
+                    <span class="published-date">{$published_date}</span>
+                </div>
             </div>
-          </div>';
-    
+        </div>
+HTML;
+    }
+
+    echo '</div></div>';
+
 } catch (Exception $e) {
     $error_message = DEBUG_MODE ? $e->getMessage() : 'An error occurred while processing your request.';
     
-    echo '<div class="result-card">
-            <div class="result-header">
-                <i class="fas fa-exclamation-triangle result-icon"></i>
-                <h3 class="result-title">Error</h3>
-            </div>
-            <div class="result-content">
-                <p>' . htmlspecialchars($error_message) . '</p>
-            </div>
-          </div>';
+    echo '<div class="video-section"><p class="error-message">' . htmlspecialchars($error_message) . '</p></div>';
 }
 ?> 
