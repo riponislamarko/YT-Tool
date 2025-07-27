@@ -84,6 +84,7 @@ try {
     $video = $data['items'][0];
     $snippet = $video['snippet'];
     $tags = $snippet['tags'] ?? [];
+    $tag_count = count($tags);
     
     echo <<<HTML
     <div class="video-section tag-extractor">
