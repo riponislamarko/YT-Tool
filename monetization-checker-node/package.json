@@ -1,0 +1,20 @@
+{
+  "name": "monetization-checker-node",
+  "version": "1.0.0",
+  "description": "A web-based tool to check if a YouTube channel is monetized.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "youtube",
+    "monetization",
+    "puppeteer"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "puppeteer": "^21.3.8"
+  }
+}

@@ -55,13 +55,17 @@
                             <input type="text" 
                                    id="youtubeInput" 
                                    class="search-input" 
-                                   placeholder="Enter YouTube URL, video ID, channel ID, or channel handle"
+                                   placeholder="Enter YouTube URL, ID, or search term"
                                    autocomplete="off">
                         </div>
                         <div class="tool-selector">
-                            <button class="tool-btn active" data-tool="data">
-                                <i class="fas fa-chart-bar"></i>
-                                <span>Data Viewer</span>
+                            <button class="tool-btn active" data-tool="channel-stats">
+                                <i class="fas fa-chart-pie"></i>
+                                <span>Channel Analytics</span>
+                            </button>
+                            <button class="tool-btn" data-tool="video-stats">
+                                <i class="fas fa-info-circle"></i>
+                                <span>Video Analytics</span>
                             </button>
                             <button class="tool-btn" data-tool="channel">
                                 <i class="fas fa-search"></i>
@@ -71,6 +75,10 @@
                                 <i class="fas fa-image"></i>
                                 <span>Thumbnails</span>
                             </button>
+                            <button class="tool-btn" data-tool="images">
+                                <i class="fas fa-images"></i>
+                                <span>Images</span>
+                            </button>
                             <button class="tool-btn" data-tool="tags">
                                 <i class="fas fa-tags"></i>
                                 <span>Tags</span>
@@ -78,6 +86,18 @@
                             <button class="tool-btn" data-tool="search">
                                 <i class="fas fa-video"></i>
                                 <span>Search</span>
+                            </button>
+                            <button class="tool-btn" data-tool="shadowban">
+                                <i class="fas fa-user-secret"></i>
+                                <span>Shadowban</span>
+                            </button>
+                            <button class="tool-btn" data-tool="earnings">
+                                <i class="fas fa-dollar-sign"></i>
+                                <span>Earnings</span>
+                            </button>
+                            <button class="tool-btn" data-tool="monetization">
+                                <i class="fas fa-hand-holding-usd"></i>
+                                <span>Monetization</span>
                             </button>
                         </div>
                         <button class="analyze-btn" id="searchBtn">

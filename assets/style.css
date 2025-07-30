@@ -546,6 +546,7 @@ body {
     /* Clamp to 2 lines */
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;  
     overflow: hidden;
 }
@@ -670,5 +671,167 @@ body {
     background-color: var(--bg-primary);
     border-color: var(--accent-primary);
     color: var(--accent-primary);
+}
+
+/* 10. ALL-IN-ONE CHANNEL ANALYZER STYLES */
+.channel-analyzer-result {
+    width: 100%;
+}
+
+.channel-header {
+    position: relative;
+    margin-bottom: 2rem;
+    background-color: var(--bg-secondary);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-elevation-low);
+}
+
+.channel-banner {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    display: block;
+    background-color: var(--bg-primary);
+}
+
+.channel-info {
+    display: flex;
+    align-items: center;
+    padding: 1.5rem;
+    position: relative; /* For pseudo-element background */
+}
+
+.channel-info::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.6), rgba(0,0,0,0.2));
+    z-index: 1;
+    opacity: 0;
+}
+
+[data-theme="dark"] .channel-info::before {
+   opacity: 1;
+}
+
+.channel-pfp {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    margin-right: 1.5rem;
+    z-index: 2;
+    background-color: var(--bg-secondary);
+}
+
+.channel-title-block {
+    z-index: 2;
+}
+
+.channel-title-block h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .channel-title-block h1 {
+    color: #fff;
+}
+
+.channel-title-block p {
+    margin: 0;
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .channel-title-block p {
+    color: #ccc;
+}
+
+.data-section-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.data-card {
+    background-color: var(--bg-secondary);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-elevation-low);
+}
+
+.data-card h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.data-card p {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.data-card small {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    display: block;
+    margin-top: 0.25rem;
+}
+
+.status-safe { color: #28a745; }
+.status-danger { color: #dc3545; }
+.earnings-range { color: var(--accent-primary); }
+
+.recent-videos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.recent-videos-grid .video-card {
+    background: none;
+    box-shadow: none;
+    border-radius: 0;
+}
+
+.recent-videos-grid .video-card:hover {
+    transform: none;
+}
+
+.recent-videos-grid .video-card a {
+    text-decoration: none;
+    color: var(--text-primary);
+    display: block;
+}
+
+.recent-videos-grid .video-card img {
+    width: 100%;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid var(--border-color);
+}
+
+.recent-videos-grid .video-card a:hover img {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-elevation-medium);
+}
+
+.recent-videos-grid .video-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--text-primary);
 }
 

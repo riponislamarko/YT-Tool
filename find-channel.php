@@ -35,7 +35,7 @@ function get_channel_id_from_input($input, $api_key) {
     // Extract query from handle or URL
     if (preg_match('/^@([a-zA-Z0-9_-]+)$/', $input, $matches)) {
         $query = $matches[1];
-    } elseif (preg_match('/youtube\.com\/(?:channel\/|c\/|user\/|@)([^\/\?]+)/', $input, $matches)) {
+    } elseif (preg_match('/youtube\.com\/(?:channel\/|c\/|user\/|@)([^\/?]+)/', $input, $matches)) {
         $query = $matches[1];
         if (preg_match('/^UC[a-zA-Z0-9_-]{22}$/', $query)) {
             return $query;

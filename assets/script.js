@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultsContainer = document.getElementById('resultsContainer');
     const resultsContent = document.getElementById('resultsContent');
     const toolButtons = document.querySelectorAll('.tool-btn');
-    let selectedTool = 'data';
+    let selectedTool = 'channel-stats';
 
     // Tool selection
     toolButtons.forEach(button => {
@@ -48,9 +48,13 @@ document.addEventListener('DOMContentLoaded', function() {
         let endpoint = '';
         let body = '';
         switch (selectedTool) {
-            case 'data':
-                endpoint = 'data-viewer.php';
-                body = 'url=' + encodeURIComponent(input) + '&tool=data';
+            case 'channel-stats':
+                endpoint = 'analyze-channel.php';
+                body = 'channel_input=' + encodeURIComponent(input);
+                break;
+            case 'video-stats':
+                endpoint = 'get-video-stats.php';
+                body = 'video_input=' + encodeURIComponent(input);
                 break;
             case 'channel':
                 endpoint = 'find-channel.php';
@@ -61,6 +65,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 const thumbVideoId = extractVideoId(input);
                 body = 'video_id=' + encodeURIComponent(thumbVideoId);
                 break;
+            case 'images':
+                endpoint = 'get-images.php';
+                body = 'channel_input=' + encodeURIComponent(input);
+                break;
             case 'tags':
                 endpoint = 'extract-tags.php';
                 const tagsVideoId = extractVideoId(input);
@@ -69,6 +77,22 @@ document.addEventListener('DOMContentLoaded', function() {
             case 'search':
                 endpoint = 'search-video.php';
                 body = 'input=' + encodeURIComponent(input);
+                break;
+            case 'shadowban':
+                endpoint = 'shadowban-detector.php';
+                body = 'channel_input=' + encodeURIComponent(input);
+                break;
+            case 'earnings':
+                endpoint = 'earnings-calculator.php';
+                body = 'input=' + encodeURIComponent(input);
+                break;
+            case 'monetization':
+                endpoint = 'monetization-checker.php';
+                body = 'input=' + encodeURIComponent(input);
+                break;
+            case 'data':
+                endpoint = 'data-viewer.php';
+                body = 'url=' + encodeURIComponent(input) + '&tool=data';
                 break;
         }
 

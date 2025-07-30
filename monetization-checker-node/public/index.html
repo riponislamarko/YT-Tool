@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Monetization Checker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>YouTube Monetization Checker</h1>
+            <p>Enter a channel URL or handle to check its likely monetization status.</p>
+        </header>
+        <main>
+            <div class="input-group">
+                <input type="text" id="channel-input" placeholder="Enter YouTube channel URL or handle">
+                <button id="check-btn">Check</button>
+            </div>
+            <div id="result-container" class="result-container">
+                <!-- Results will be displayed here -->
+            </div>
+        </main>
+        <footer>
+            <p>Powered by Node.js, Puppeteer, and the YouTube Data API.</p>
+        </footer>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
