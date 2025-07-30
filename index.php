@@ -95,10 +95,7 @@
                                 <i class="fas fa-dollar-sign"></i>
                                 <span>Earnings</span>
                             </button>
-                            <button class="tool-btn" data-tool="monetization">
-                                <i class="fas fa-hand-holding-usd"></i>
-                                <span>Monetization</span>
-                            </button>
+
                         </div>
                         <button class="analyze-btn" id="searchBtn">
                             <span>Analyze</span>

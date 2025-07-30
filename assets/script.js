@@ -87,8 +87,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 body = 'input=' + encodeURIComponent(input);
                 break;
             case 'monetization':
-                endpoint = 'monetization-checker.php';
-                body = 'input=' + encodeURIComponent(input);
+                endpoint = 'check-monetization-node.php';
+                body = 'channel_input=' + encodeURIComponent(input);
                 break;
             case 'data':
                 endpoint = 'data-viewer.php';

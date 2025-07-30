@@ -67,102 +67,73 @@ $videos_url = "https://www.googleapis.com/youtube/v3/search?part=snippet&channel
 $videos_response = @file_get_contents($videos_url);
 $recent_videos = $videos_response ? json_decode($videos_response, true)['items'] : [];
 
-// --- Monetization & Advanced Checks ---
-$monetization_reasons = [];
+// --- Monetization Check via Node.js Service ---
+$monetization_data = [];
+$node_server_url = 'http://localhost:3000/check';
+$post_data = json_encode(['channelUrl' => $input]);
 
-// 1. Advanced check via ytInitialPlayerResponse scraping
-if (!empty($recent_videos)) {
-    $latest_video_id = $recent_videos[0]['id']['videoId'];
-    $watch_page_content = @file_get_contents("https://www.youtube.com/watch?v={$latest_video_id}");
-    if ($watch_page_content) {
-        // Extract the ytInitialPlayerResponse JSON from the HTML
-        if (preg_match('/var ytInitialPlayerResponse = ({.*?});/', $watch_page_content, $matches)) {
-            $player_response = json_decode($matches[1], true);
-            // Check for the isMonetizable flag
-            if (isset($player_response['playabilityStatus']['isMonetizable']) && $player_response['playabilityStatus']['isMonetizable'] === true) {
-                $monetization_reasons[] = 'Video is monetizable (via page data)';
-            }
-        }
-    }
+// Use cURL to make the request
+$ch = curl_init($node_server_url);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Content-Type: application/json',
+    'Content-Length: ' . strlen($post_data)
+]);
+curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5); // 5-second connection timeout
+curl_setopt($ch, CURLOPT_TIMEOUT, 45);      // 45-second total timeout for the operation
+
+$response = curl_exec($ch);
+$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$curl_error = curl_error($ch);
+curl_close($ch);
+
+if ($response !== false && $http_code === 200) {
+    $monetization_data = json_decode($response, true);
+} else {
+    // Create an error object if the service fails
+    $monetization_data = [
+        'is_monetized' => false,
+        'score' => 0,
+        'details' => [
+            'error' => $curl_error ?: "Node.js service failed with HTTP code {$http_code}"
+        ]
+    ];
 }
 
-// 2. Check for a "Join" button on the channel page
-$channel_page_url = "https://www.youtube.com/channel/{$channel_id}";
-$channel_page_content = @file_get_contents($channel_page_url);
-if ($channel_page_content && strpos($channel_page_content, '"text":"Join"') !== false) {
-    $monetization_reasons[] = 'Channel Memberships (Join button) found';
-}
-
-// 3. Subscriber count heuristic
-if ($channel_data['statistics']['subscriberCount'] >= 1000) {
-    $monetization_reasons[] = 'Meets subscriber requirement (&gt;1,000)';
-}
-
-$is_monetized = !empty($monetization_reasons);
-
-// --- Prepare Data for Display ---
+// --- Prepare Data for Template ---
 $snippet = $channel_data['snippet'];
 $stats = $channel_data['statistics'];
-$branding = $channel_data['brandingSettings']['image'] ?? [];
+$branding = $channel_data['brandingSettings'] ?? [];
 
-$title = htmlspecialchars($snippet['title']);
-$description = htmlspecialchars($snippet['description']);
-$profile_pic = str_replace('=s88-c-k-c0x00ffffff-no-rj', '=s800-c-k-c0x00ffffff-no-rj', $snippet['thumbnails']['high']['url']);
-$banner = isset($branding['bannerExternalUrl']) ? $branding['bannerExternalUrl'] . '=w2120-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj' : null;
+// Format data for the template
+$channel_data = [
+    'channel_id' => $channel_id,
+    'title' => $snippet['title'],
+    'description' => $snippet['description'] ?? '',
+    'publishedAt' => $snippet['publishedAt'],
+    'country' => $snippet['country'] ?? null,
+    'customUrl' => $snippet['customUrl'] ?? null,
+    'defaultLanguage' => $snippet['defaultLanguage'] ?? null,
+    'privacyStatus' => $snippet['privacyStatus'] ?? 'public',
+    'madeForKids' => $snippet['madeForKids'] ?? false,
+    'keywords' => $snippet['keywords'] ?? '',
+    'thumbnail' => str_replace('=s88-c-k-c0x00ffffff-no-rj', '=s800-c-k-c0x00ffffff-no-rj', $snippet['thumbnails']['high']['url']),
+    'banner' => $branding['image']['bannerExternalUrl'] ?? null,
+    'subscriberCount' => (int)$stats['subscriberCount'],
+    'viewCount' => (int)$stats['viewCount'],
+    'videoCount' => (int)$stats['videoCount'],
+    'avgViews' => $stats['videoCount'] > 0 ? (int)($stats['viewCount'] / $stats['videoCount']) : 0,
+    'category' => $branding['channel']['keywords'] ?? 'Not specified',
+    'recentVideos' => array_map(function($video) {
+        return [
+            'id' => $video['id']['videoId'] ?? '',
+            'title' => $video['snippet']['title'] ?? '',
+            'thumbnail' => $video['snippet']['thumbnails']['medium']['url'] ?? ''
+        ];
+    }, $recent_videos)
+];
 
-$subscribers = format_number($stats['subscriberCount']);
-$total_views = format_number($stats['viewCount']);
-$total_videos = format_number($stats['videoCount']);
-
-$earnings_low = number_format(($stats['viewCount'] / 1000) * 1.5, 2);
-$earnings_high = number_format(($stats['viewCount'] / 1000) * 4.0, 2);
-
-// --- Generate HTML Output ---
-ob_start();
-?>
-<div class="channel-analyzer-result">
-    <div class="channel-header">
-        <?php if ($banner): ?>
-            <img src="<?= $banner ?>" alt="Channel Banner" class="channel-banner">
-        <?php endif; ?>
-        <div class="channel-info">
-            <img src="<?= $profile_pic ?>" alt="Profile Picture" class="channel-pfp">
-            <div class="channel-title-block">
-                <h1><?= $title ?></h1>
-                <p><?= $subscribers ?> subscribers &bull; <?= $total_videos ?> videos &bull; <?= $total_views ?> views</p>
-            </div>
-        </div>
-    </div>
-
-    <div class="data-section-grid">
-        <div class="data-card">
-            <h3>Monetization Status</h3>
-            <p class="status-<?= $is_monetized ? 'safe' : 'danger' ?>">
-                <?= $is_monetized ? 'Likely Monetized' : 'Not Detected' ?>
-            </p>
-            <?php if ($is_monetized): ?>
-                <small>Reasons: <?= implode(', ', $monetization_reasons) ?></small>
-            <?php endif; ?>
-        </div>
-        <div class="data-card">
-            <h3>Estimated Channel Earnings</h3>
-            <p class="earnings-range">$<?= $earnings_low ?> - $<?= $earnings_high ?></p>
-            <small>*Based on total views and industry RPM averages.</small>
-        </div>
-    </div>
-
-    <h3>Recent Videos</h3>
-    <div class="recent-videos-grid">
-        <?php foreach ($recent_videos as $video): ?>
-        <div class="video-card">
-            <a href="https://www.youtube.com/watch?v=<?= $video['id']['videoId'] ?>" target="_blank">
-                <img src="<?= htmlspecialchars($video['snippet']['thumbnails']['medium']['url']) ?>" alt="Video Thumbnail">
-                <p class="video-title"><?= htmlspecialchars($video['snippet']['title']) ?></p>
-            </a>
-        </div>
-        <?php endforeach; ?>
-    </div>
-</div>
-<?php
-$output = ob_get_clean();
-echo $output;
+// Include the template file
+require_once 'templates/channel_analysis.php';
